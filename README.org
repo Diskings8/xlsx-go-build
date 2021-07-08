@@ -6,6 +6,13 @@ use this item to quickly build game_xlsx to go_file
 # 项目背景
 	快速构建游戏xlsx配置到go文件
 -------------
+#现在支持的格式，后续新增可以在-variable里面新增修改
+::	int				整型 				例如:1
+::	IntSlice		整型的一维数组 	 	例如:[1,2,3]
+::	IntSlice2		整型的二维数组  	例如:[[1,2,3],[4,5,6]
+::	float			浮点型  			例如:1.5
+::	string			字符型  			例如:"无生无灭炉"
+::	StringSlice		字符型的一维数组  	例如:["无生无灭炉","雕花青铜炉"]
 
 #拼装后的结构体声明如下：
 package data

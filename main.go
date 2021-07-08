@@ -34,16 +34,23 @@ func HandleReadExcel(readPath, savePath, allType string) error {
 	return nil
 }
 
-// 读取外部参数
-func main() {
+// func testData() {
+// 	obj := &data.Rap{}
+// 	v, _ := obj.Get(1)
+// 	fmt.Println(v.RecycleReward)
+// }
+func runHandle() {
 	flag.Parse()
 	if *savePath == "" || *readPath == "" || *allType == "" {
 		fmt.Println("savePath, readPath or allType is nil")
-		return
 	}
 	err := HandleReadExcel(*readPath, *savePath, *allType)
 	if err != nil {
 		fmt.Printf("something err:%v\n", err)
-		return
 	}
+}
+
+// 读取外部参数
+func main() {
+	runHandle()
 }

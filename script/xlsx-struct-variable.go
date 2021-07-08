@@ -47,3 +47,46 @@ func firstRuneToUpper(str string) string {
 func ToLower(str string) string {
 	return strings.ToLower(str)
 }
+
+func valueWithOutBracket(value string) string {
+	// value = strings.Trim(value, "[")
+	// value = strings.Trim(value, "]")
+	value = strings.Replace(value, "[", "{", -1)
+	value = strings.Replace(value, "]", "}", -1)
+	return strings.TrimSpace(value)
+}
+
+// 对于自定义类型的数据转换为go内置类型
+func extTypeChangeWithValue(dataType, value string) string {
+	value = valueWithOutBracket(value)
+	switch dataType {
+	case "":
+		return "int"
+	case "IntSlice":
+		return "[]int" + value + ""
+	case "IntSlice2":
+		return "[][]int" + value + ""
+	case "StringSlice":
+		return "[]string" + value + ""
+	default:
+		return value
+	}
+}
+
+// 对于自定义的类型转换为go内置类型
+func extTypeChange(dataType string) string {
+	switch dataType {
+	case "":
+		return "int"
+	case "IntSlice":
+		return "[]int"
+	case "IntSlice2":
+		return "[][]int{}"
+	case "StringSlice":
+		return "[]string"
+	case "float":
+		return "float64"
+	default:
+		return dataType
+	}
+}

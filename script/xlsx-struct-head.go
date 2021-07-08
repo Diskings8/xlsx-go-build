@@ -21,8 +21,8 @@ type Generate struct {
 
 	headRowMap map[string]int // title-tag的映射信息
 
-	headRow       []int      //title-tag的所在行信息
-	headSheetData [][]string //组装struct-head数据前的信息
+	headRow       []int            //title-tag的所在行信息
+	headSheetData []map[int]string //组装struct-head数据前的信息
 
 	bodyRow       []int      //value-data的所在行信息
 	bodySheetData [][]string //组装struct-data数据前的信息
@@ -50,7 +50,7 @@ func (gen *Generate) print() {
 
 // 初始化数据
 func (gen *Generate) doInitAndOpen(fileName string) error {
-	gen.headSheetData = make([][]string, 0)
+	gen.headSheetData = make([]map[int]string, 0)
 	gen.bodySheetData = make([][]string, 0)
 	gen.headRow = make([]int, 0)
 	gen.bodyRow = make([]int, 0)
@@ -96,7 +96,7 @@ func (gen *Generate) openXlsxFile(fileName string) error {
 			return err
 		}
 
-		gen.print()
+		// gen.print()
 	}
 	return nil
 }
@@ -109,15 +109,16 @@ func (gen *Generate) customRules(sheet *xlsx.Sheet) error {
 		return err
 	}
 	// 遍历列
-	for i := 0; i < sheet.MaxCol; i++ {
-		// 判断某一列的数据类型是否为空或者是否没有相关Type配置
+	// 排除第一列
+	for i := 1; i < sheet.MaxCol; i++ {
+		//判断某一列的数据类型是否为空或者是否没有相关Type配置
 		if !gen.filterNoExport(sheet, i) {
 			continue
 		}
-		cellHeadData := make([]string, 0)
+		cellHeadData := make(map[int]string)
 		// 遍历行-头信息部分
-		for j := 0; j < len(gen.headRow); j++ {
-			cellHeadData = append(cellHeadData, sheet.Cell(j, i).Value)
+		for _, j := range gen.headRow {
+			cellHeadData[j] = sheet.Cell(j, i).Value
 		}
 		gen.headSheetData = append(gen.headSheetData, cellHeadData)
 	}
@@ -136,10 +137,9 @@ func (gen *Generate) customRules(sheet *xlsx.Sheet) error {
 
 // 不导出的不处理
 // 如果没有准确的数据类型TYPE和需要导出的声明EXPORT，则默认为不导出
+// 兼容默认TYPE=int
 func (gen *Generate) filterNoExport(sheet *xlsx.Sheet, j int) bool {
-	if typeRow, ok := gen.headRowMap["TYPE"]; !ok {
-		return false
-	} else if sheet.Cell(typeRow, j).Value == "" {
+	if _, ok := gen.headRowMap["TYPE"]; !ok {
 		return false
 	}
 	if exportRow, ok := gen.headRowMap["EXPORT"]; !ok {
@@ -152,6 +152,7 @@ func (gen *Generate) filterNoExport(sheet *xlsx.Sheet, j int) bool {
 
 // 头信息映射建立
 func (gen *Generate) findTitle(sheet *xlsx.Sheet) {
+	j := 0
 	for i := 0; i < sheet.MaxRow; i++ {
 		celValue := sheet.Cell(i, 0).Value
 		switch celValue {
@@ -159,6 +160,7 @@ func (gen *Generate) findTitle(sheet *xlsx.Sheet) {
 			// 对上述类型记录字段以便生成struct的声明，同时记录所在行 进行数据读取
 			gen.headRow = append(gen.headRow, i)
 			gen.headRowMap[celValue] = i
+			j++
 		case "VALUE":
 			// 对上述类型记录所在行 进行数据读取
 			gen.bodyRow = append(gen.bodyRow, i)
@@ -197,16 +199,16 @@ func (gen *Generate) SplicingHeadData() error {
 		if err != nil {
 			return err
 		}
-
+		extChangeStructValue := extTypeChange(value[TYPE])
 		switch value[EXPORT] {
 		case "all":
-			structData += fmt.Sprintf(structValue, firstRuneToUpper(value[KEY]), value[TYPE], value[KEY], value[KEY])
+			structData += fmt.Sprintf(structValue, firstRuneToUpper(value[KEY]), extChangeStructValue, value[KEY], value[KEY])
 			if value[DESC] != "" {
 				structData += fmt.Sprintf(structRemarks, value[DESC])
 			}
 			structData += fmt.Sprintf(structValueEnd)
 		case "s":
-			structData += fmt.Sprintf(structValueForServer, firstRuneToUpper(value[KEY]), value[TYPE], value[KEY])
+			structData += fmt.Sprintf(structValueForServer, firstRuneToUpper(value[KEY]), extChangeStructValue, value[KEY])
 			if value[DESC] != "" {
 				structData += fmt.Sprintf(structRemarks, value[DESC])
 			}
@@ -228,6 +230,7 @@ func (gen *Generate) SplicingHeadData() error {
 func (gen *Generate) SplicingBodyData() error {
 	STRUCTNAME := gen.structName
 	KEY := gen.headRowMap["KEY"]
+	TYPE := gen.headRowMap["TYPE"]
 	bodyData := structFuncHead1
 	bodyData += fmt.Sprintf(structFuncHead2, ToLower(STRUCTNAME), firstRuneToUpper(STRUCTNAME), firstRuneToUpper(STRUCTNAME))
 	bodyData += structBody1
@@ -235,7 +238,8 @@ func (gen *Generate) SplicingBodyData() error {
 		bodyData += fmt.Sprintf(structSwitchCase1, onedata[0])
 		bodyData += fmt.Sprintf(structSwitchCase2, firstRuneToUpper(STRUCTNAME))
 		for k, j := range onedata {
-			bodyData += fmt.Sprintf(" %s:%s,", firstRuneToUpper(gen.headSheetData[k][KEY]), j)
+			changedata := extTypeChangeWithValue(gen.headSheetData[k][TYPE], j)
+			bodyData += fmt.Sprintf(" %s:%s,", firstRuneToUpper(gen.headSheetData[k][KEY]), changedata)
 		}
 		bodyData = strings.TrimRight(bodyData, ",")
 		bodyData += structSwitchCase3
@@ -249,11 +253,16 @@ func (gen *Generate) SplicingBodyData() error {
 
 // 检测解析出来的字段类型是否符合要求
 func (gen *Generate) CheckType(dataType string) error {
-	res := strings.Index(gen.allType, dataType)
-	if res == -1 {
-		return fmt.Errorf("CheckType|struct:\"%v\" dataType:\"%v\" is not in provide dataType", gen.structName, dataType)
+	switch dataType {
+	case "":
+		return nil
+	default:
+		res := strings.Index(gen.allType, dataType)
+		if res == -1 {
+			return fmt.Errorf("CheckType|struct:\"%v\" dataType:\"%v\" is not in provide dataType", gen.structName, dataType)
+		}
+		return nil
 	}
-	return nil
 }
 
 // 拼装好的struct-head写入新的文件
