@@ -28,9 +28,7 @@ type Generate struct {
 	bodySheetData [][]string //组装struct-data数据前的信息
 }
 
-// 因为只生成一个关于所有struct的文件，故不采用goroute
-// 因为是在每一个打开的文件时执行struct的组装（会有打开同一个文件io的加锁问题）和data数据的生成
-// 所以没有采用goroute的方式
+// 不生成共用的文件，采用goroute
 func OneProOpenXlsx(savePath, allType, fileName string) {
 	gt := Generate{savePath: savePath, allType: allType}
 	if err := gt.doInitAndOpen(fileName); err != nil {
@@ -74,25 +72,17 @@ func (gen *Generate) openXlsxFile(fileName string) error {
 		if err := gen.SplicingHeadData(); err != nil {
 			return err
 		}
-		//判断是否有head-cache数据读入成功
-		if gen.writeHeadData == "" {
-			return fmt.Errorf("ReadExcel|gen.data is nil")
-		}
-		//执行head数据文件落地
-		if err := gen.writeHeadNewFile(); err != nil {
-			return err
-		}
-
 		//执行body数据组装
 		if err := gen.SplicingBodyData(); err != nil {
 			return err
 		}
-		//判断是否有body-cache数据读入成功
-		if gen.writeBodyData == "" {
-			return fmt.Errorf("ReadExcel|gen.data is nil")
+
+		//判断是否有head-cache 和 body-cache(可以为空) 数据读入成功
+		if gen.writeHeadData == "" {
+			return fmt.Errorf("ReadExcel|gen.head-data is nil")
 		}
-		//执行body数据文件落地
-		if err := gen.writeBodyNewFile(); err != nil {
+		//执行head数据文件落地
+		if err := gen.mergeDataWrite(); err != nil {
 			return err
 		}
 
@@ -231,8 +221,7 @@ func (gen *Generate) SplicingBodyData() error {
 	STRUCTNAME := gen.structName
 	KEY := gen.headRowMap["KEY"]
 	TYPE := gen.headRowMap["TYPE"]
-	bodyData := structFuncHead1
-	bodyData += fmt.Sprintf(structFuncHead2, ToLower(STRUCTNAME), firstRuneToUpper(STRUCTNAME), firstRuneToUpper(STRUCTNAME))
+	bodyData := fmt.Sprintf(structFuncHead2, ToLower(STRUCTNAME), firstRuneToUpper(STRUCTNAME), firstRuneToUpper(STRUCTNAME))
 	bodyData += structBody1
 	for _, onedata := range gen.bodySheetData {
 		bodyData += fmt.Sprintf(structSwitchCase1, onedata[0])
@@ -266,41 +255,17 @@ func (gen *Generate) CheckType(dataType string) error {
 }
 
 // 拼装好的struct-head写入新的文件
-// 默认导出为objs.go
-var outSumFileName = "objs.go"
-
-func (gen *Generate) writeHeadNewFile() error {
-	data := gen.writeHeadData
+func (gen *Generate) mergeDataWrite() error {
+	datahead := gen.writeHeadData
+	databody := gen.writeBodyData
 	str := strings.Split(gen.savePath, "\\")
 	if len(str) == 0 {
 		return fmt.Errorf("WriteNewFile|len(str) is 0")
 	}
-	header = fmt.Sprintf(header, str[len(str)-1])
-	data = header + data
-	fw, err := os.OpenFile(gen.savePath+"\\"+outSumFileName, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
-	if err != nil {
-		return fmt.Errorf("WriteNewFile|OpenFile is err:%v", err)
-	}
-	defer func() { _ = fw.Close() }()
-	_, err = fw.Write([]byte(data))
-	if err != nil {
-		return fmt.Errorf("WriteNewFile|Write is err:%v", err)
-	}
-	return nil
-}
-
-// 拼装好的struct-body写入新的文件
-// 导出文件名根据配置表的声明导出
-func (gen *Generate) writeBodyNewFile() error {
-	data := gen.writeBodyData
-	FileName := gen.fileName
-	str := strings.Split(gen.savePath, "\\")
-	if len(str) == 0 {
-		return fmt.Errorf("WriteNewFile|len(str) is 0")
-	}
-	bodyheader := fmt.Sprintf(structheader, str[len(str)-1])
-	data = bodyheader + data
-	fw, err := os.OpenFile(gen.savePath+"\\"+FileName, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+	header := fmt.Sprintf(header1, str[len(str)-1])
+	header += header2
+	data := header + datahead + databody
+	fw, err := os.OpenFile(gen.savePath+"\\"+gen.fileName, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
 		return fmt.Errorf("WriteNewFile|OpenFile is err:%v", err)
 	}
