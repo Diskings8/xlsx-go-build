@@ -3,3 +3,6 @@
 
 # ignore mod file
 go.*
+
+# ignore data
+/data

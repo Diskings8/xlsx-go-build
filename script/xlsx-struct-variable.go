@@ -44,6 +44,17 @@ func firstRuneToUpper(str string) string {
 func ToLower(str string) string {
 	return strings.ToLower(str)
 }
+func ContainsDuplicate(nums []string) bool {
+	m := make(map[string]interface{}, len(nums))
+	for _, v := range(nums){
+		if _, ok := m[v];ok{
+			return true
+		}
+		m[v] = true
+	}
+	return false
+}
+
 
 func valueWithOutBracket(value string) string {
 	// value = strings.Trim(value, "[")

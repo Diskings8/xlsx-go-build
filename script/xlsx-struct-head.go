@@ -12,6 +12,7 @@ import (
 type Generate struct {
 	savePath string // 生成文件的保存路径
 	allType  string // 文件当中的数据类型
+	xlsxFileName string //
 
 	writeHeadData string // 生成文件的内容
 	writeBodyData string // 生成文件的内容
@@ -26,6 +27,8 @@ type Generate struct {
 
 	bodyRow       []int      //value-data的所在行信息
 	bodySheetData [][]string //组装struct-data数据前的信息
+
+	keyIdCol	int // key-Id所在列
 }
 
 // 不生成共用的文件，采用goroute
@@ -48,11 +51,13 @@ func (gen *Generate) print() {
 
 // 初始化数据
 func (gen *Generate) doInitAndOpen(fileName string) error {
+	gen.xlsxFileName = fileName
 	gen.headSheetData = make([]map[int]string, 0)
 	gen.bodySheetData = make([][]string, 0)
 	gen.headRow = make([]int, 0)
 	gen.bodyRow = make([]int, 0)
 	gen.headRowMap = make(map[string]int)
+	gen.keyIdCol = 1
 	return gen.openXlsxFile(fileName)
 }
 
@@ -99,6 +104,10 @@ func (gen *Generate) customRules(sheet *xlsx.Sheet) error {
 		return err
 	}
 	// 遍历列
+	if gen.checkIdUnique(sheet) {
+		text := fmt.Sprintf("%s sheet has Duplicate id in %s file", sheet.Name, gen.xlsxFileName)
+		return errors.New(text)
+	}
 	// 排除第一列
 	for i := 1; i < sheet.MaxCol; i++ {
 		//判断某一列的数据类型是否为空或者是否没有相关Type配置
@@ -138,6 +147,28 @@ func (gen *Generate) filterNoExport(sheet *xlsx.Sheet, j int) bool {
 		return false
 	}
 	return true
+}
+//
+func (gen *Generate)findKeyCol(sheet *xlsx.Sheet){
+	if keyRow, ok := gen.headRowMap["KEY"]; !ok {
+		for i := 0; i<  sheet.MaxCol; i++{
+			if sheet.Cell(keyRow, i).Value == "id" || sheet.Cell(keyRow, i).Value == "Id" || sheet.Cell(keyRow, i).Value == "ID" {
+				gen.keyIdCol = i
+				break
+			}
+		}
+	}
+}
+
+func (gen *Generate)checkIdUnique(sheet *xlsx.Sheet) bool{
+	colIds := make([]string,0)
+	for i := 0; i<  sheet.MaxRow; i++{
+		val := sheet.Cell(i, gen.keyIdCol).Value
+		if  val!= "" && sheet.Cell(i,0).Value == "VALUE"{
+			colIds = append(colIds, val)
+		}
+	}
+	return ContainsDuplicate(colIds)
 }
 
 // 头信息映射建立
@@ -219,12 +250,13 @@ func (gen *Generate) SplicingHeadData() error {
 // 拼装struct-body内容
 func (gen *Generate) SplicingBodyData() error {
 	STRUCTNAME := gen.structName
+	IdCol := gen.keyIdCol - 1
 	KEY := gen.headRowMap["KEY"]
 	TYPE := gen.headRowMap["TYPE"]
 	bodyData := fmt.Sprintf(structFuncHead2, ToLower(STRUCTNAME), firstRuneToUpper(STRUCTNAME), firstRuneToUpper(STRUCTNAME))
 	bodyData += structBody1
 	for _, onedata := range gen.bodySheetData {
-		bodyData += fmt.Sprintf(structSwitchCase1, onedata[0])
+		bodyData += fmt.Sprintf(structSwitchCase1, onedata[IdCol])
 		bodyData += fmt.Sprintf(structSwitchCase2, firstRuneToUpper(STRUCTNAME))
 		for k, j := range onedata {
 			changedata := extTypeChangeWithValue(gen.headSheetData[k][TYPE], j)

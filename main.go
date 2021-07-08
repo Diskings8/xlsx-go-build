@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path"
 	"sync"
 )
@@ -21,6 +22,10 @@ func HandleReadExcel(readPath, savePath, allType string) error {
 		return fmt.Errorf("ReadExcel|savePath or allType is nil")
 	}
 	// 获取目录下所有文件
+	if _, err := os.Stat(savePath);err != nil{
+		_ = os.Mkdir(savePath,os.ModePerm)
+	}
+
 	files, err := ioutil.ReadDir(readPath)
 	if err != nil {
 		return fmt.Errorf("ReadExcel|ReadDir is err:%v", err)
@@ -63,4 +68,5 @@ func runHandle() {
 // 读取外部参数
 func main() {
 	runHandle()
+	//fmt.Println(script.ContainsDuplicate([]string{"aaa","abc","c"}))
 }
