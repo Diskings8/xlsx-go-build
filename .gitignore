@@ -1,0 +1,5 @@
+# ignore vendor
+/vendor
+
+# ignore mod file
+go.*
