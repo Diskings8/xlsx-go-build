@@ -25,6 +25,32 @@ var (
 	structSwitchCase5 = "    }\n"
 	structFuncEnd     = "}"
 )
+var (
+	ENDFILENAME = "END_FILE"
+	ENDSTRUCT = "END_NAME"
+
+	FROFILENAME = "FRO_FILE"
+	FROSRTUCT = "FRO_NAME"
+
+	TYPE = "TYPE"
+	DESC = "DESC"
+	KEY = "KEY"
+	EXPORT = "EXPORT"
+
+	VALUE = "VALUE"
+
+	OPS = "s"
+	OPF = "c"
+	OPALL = "all"
+)
+
+var(
+	frohead = "// \n let %s: object = {\n"
+	frodesc = "// \"%s\""
+	froid = "\n        %s:{"
+	froend = "\n};\n export default %s;\n"
+
+)
 
 // 字符串首字母转换成大写
 func firstRuneToUpper(str string) string {
@@ -69,7 +95,7 @@ func extTypeChangeWithValue(dataType, value string) string {
 	value = valueWithOutBracket(value)
 	switch dataType {
 	case "":
-		return "int"
+		return value
 	case "IntSlice":
 		return "[]int" + value + ""
 	case "IntSlice2":
