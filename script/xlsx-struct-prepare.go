@@ -50,12 +50,7 @@ func (gen *Generate) print() {
 // 初始化数据
 func (gen *Generate) doInitAndOpen(fileName string) error {
 	gen.xlsxFileName = fileName
-	gen.headSheetData = make([]map[int]string, 0)
-	gen.bodySheetData = make([][]string, 0)
-	gen.headRow = make([]int, 0)
-	gen.bodyRow = make([]int, 0)
-	gen.headRowMap = make(map[string]int)
-	gen.keyIdCol = 1
+
 	return gen.openXlsxFile(fileName)
 }
 // 个人自定义配置表头
@@ -194,6 +189,12 @@ func (gen *Generate) openXlsxFile(fileName string) error {
 	}
 	// 遍历工作表
 	for _, sheet := range wb.Sheets {
+		gen.headSheetData = make([]map[int]string, 0)
+		gen.bodySheetData = make([][]string, 0)
+		gen.headRow = make([]int, 0)
+		gen.bodyRow = make([]int, 0)
+		gen.headRowMap = make(map[string]int)
+		gen.keyIdCol = 1
 		// 执行自定义导出规则
 		if err := gen.customRules(sheet); err != nil {
 			return err

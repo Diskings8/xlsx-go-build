@@ -40,7 +40,7 @@ func (gen *Generate) SpENDHeadData() error {
 			}
 		}
 		structData += structEnd
-		gen.writeHeadData += structData
+		gen.writeHeadData = structData
 
 	return nil
 }
@@ -66,7 +66,7 @@ func (gen *Generate) SpENDBodyData() error {
 	bodyData += structSwitchCase4
 	bodyData += structSwitchCase5
 	bodyData += structFuncEnd
-	gen.writeBodyData += bodyData
+	gen.writeBodyData = bodyData
 
 	return nil
 }

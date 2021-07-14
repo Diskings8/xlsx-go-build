@@ -8,6 +8,8 @@ echo %BASEPATH%
 
 ::生成objs.go文件的路径
 set savePath=%BASEPATH%frodata
+:: 清除旧数据
+del /f /s /q %savePath%
 ::目标excel文件路径
 
 set readPath=%BASEPATH%xlsx

@@ -23,7 +23,7 @@ func (gen *Generate) SpFROHeadData() error {
 			return fmt.Errorf("SplicingData|value[EXPORT]:\"%v\" is not in s,c,all", value[lEXPORT])
 		}
 		}
-	gen.writeHeadData += structData
+	gen.writeHeadData = structData
 	return nil
 }
 
@@ -48,7 +48,7 @@ func (gen *Generate) SpFROBodyData() error {
 
 	}
 	bodyData += fmt.Sprintf(froend,ToLower(STRUCTNAME))
-	gen.writeBodyData += bodyData
+	gen.writeBodyData = bodyData
 
 	return nil
 }
